@@ -1,13 +1,4 @@
-var CACHE_NAME = 'my-cache';
-var urlsToCache = [
-    '/index.html',
-    '/style.css',
-    '/main.js',
-    '/pexels.mp4',
-    '/video1.mp4',
-    '/video2.mp4',
-    '/video3.mp4',
-];
+var dynamicCacheName = 'my-dynamic-cache';
 
 self.addEventListener('install', function (e) {
     //Perform install steps
@@ -19,14 +10,31 @@ self.addEventListener('install', function (e) {
     );
 });
 
-self.addEventListener('fetch', function (event) {
-    event.respondWith(
-        caches.match(event.request).then(function (response) {
-            // Cache hit - return response
-            if (response) {
-                return response;
-            }
-            return fetch(event.request);
+// activate event
+self.addEventListener('activate', (evt) => {
+    evt.waitUntil(
+        caches.keys().then((keys) => {
+            return Promise.all(
+                keys
+                    .filter((key) => key !== dynamicCacheName)
+                    .map((key) => caches.delete(key))
+            );
+        })
+    );
+});
+
+self.addEventListener('fetch', (evt) => {
+    evt.respondWith(
+        caches.match(evt.request).then((cacheRes) => {
+            return (
+                cacheRes ||
+                fetch(evt.request).then((fetchRes) => {
+                    return caches.open(dynamicCacheName).then((cache) => {
+                        cache.put(evt.request.url, fetchRes.clone());
+                        return fetchRes;
+                    });
+                })
+            );
         })
     );
 });
